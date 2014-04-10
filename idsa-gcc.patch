@@ -1,0 +1,44 @@
+--- idsa-0.93.1.orig/apache/mod_idsa.c.orig	2002-06-19 02:06:10.000000000 +0200
++++ idsa-0.93.1.orig/apache/mod_idsa.c	2014-04-09 19:51:29.546805891 +0200
+@@ -146,7 +146,7 @@
+ 
+ static int access_idsa(request_rec * r)
+ {
+-  char *agent, *referer, *method, *protocol, *hostname;
++  const char *agent, *referer, *method, *protocol, *hostname;
+   IDSA_EVENT *e;
+   idsa_state *st = ap_get_module_config(r->per_dir_config, &idsa_module);
+ 
+@@ -160,15 +160,15 @@
+   if (st) {
+     idsa_risks(e, 1, st->arisk, st->crisk, st->irisk);
+   }
+-  (const char *) method = r->method;
++  method = r->method;
+   if (method) {
+     idsa_add_string(e, "method", method);
+   }
+-  (const char *) protocol = r->protocol;
++  protocol = r->protocol;
+   if (protocol) {
+     idsa_add_string(e, "protocol", protocol);
+   }
+-  (const char *) hostname = r->hostname;
++  hostname = r->hostname;
+   if (hostname) {
+     idsa_add_string(e, "hostname", hostname);
+   }
+@@ -185,11 +185,11 @@
+   if (r->connection->local_ip) {
+     idsa_add_scan(e, "ip4dst", IDSA_T_ADDR, r->connection->local_ip);
+   }
+-  (const char *) agent = ap_table_get(r->headers_in, "User-Agent");
++  agent = ap_table_get(r->headers_in, "User-Agent");
+   if (agent) {
+     idsa_add_string(e, "agent", agent);
+   }
+-  (const char *) referer = ap_table_get(r->headers_in, "Referer");
++  referer = ap_table_get(r->headers_in, "Referer");
+   if (referer) {
+     idsa_add_string(e, "referer", referer);
+   }

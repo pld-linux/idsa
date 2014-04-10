@@ -1,0 +1,109 @@
+--- idsa-0.93.1.orig/guile/guile.c.orig	2002-06-19 02:06:09.000000000 +0200
++++ idsa-0.93.1.orig/guile/guile.c	2014-04-09 19:04:38.920197807 +0200
+@@ -7,7 +7,7 @@
+ #include <idsa.h>
+ #include <idsa_internal.h>
+ 
+-#include <guile/gh.h>
++#include <libguile.h>
+ 
+ #include "misc.h"
+ 
+@@ -35,19 +35,19 @@
+   case IDSA_T_TIME:
+   case IDSA_T_ERRNO:
+     if (idsa_unit_get(unit_handle, &intval, sizeof(int)) == sizeof(int)) {
+-      result = gh_int2scm(intval);
++      result = scm_from_int(intval);
+     }
+     break;
+ 
+   case IDSA_T_PORT:
+     if (idsa_unit_get(unit_handle, portval, 2 * sizeof(int)) == (2 * sizeof(int))) {
+-      result = gh_ints2scm(portval, 2);
++      result = scm_take_u32vector(portval, 2);
+     }
+     break;
+ 
+   case IDSA_T_FLAG:
+     if (idsa_unit_get(unit_handle, &intval, sizeof(int)) == sizeof(int)) {
+-      result = gh_bool2scm(intval);
++      result = scm_from_bool(intval);
+     }
+     break;
+ 
+@@ -55,7 +55,7 @@
+     if (idsa_unit_get(unit_handle, &riskx, sizeof(int)) == sizeof(int)) {
+       riskval[0] = idsa_risk_severity(riskx);
+       riskval[1] = idsa_risk_confidence(riskx);
+-      result = gh_doubles2scm(riskval, 2);
++      result = scm_take_f64vector(riskval, 2);
+     }
+     break;
+ 
+@@ -66,7 +66,7 @@
+   default:
+     buflen = idsa_unit_print(unit_handle, buffer, IDSA_M_LONG, 0);
+     if (buflen >= 0) {
+-      result = gh_str2scm(buffer, buflen);
++      result = scm_from_locale_stringn(buffer, buflen);
+     }
+     break;
+   }
+@@ -92,20 +92,20 @@
+       fprintf(stderr, "build_list(): name=<%s>, type=<%d>\n", idsa_unit_name_get(unit_handle), idsa_type_name(idsa_unit_type(unit_handle)));
+ #endif
+ 
+-      unit_name = gh_str02scm(idsa_unit_name_get(unit_handle));
+-      unit_type = gh_str02scm(idsa_type_name(idsa_unit_type(unit_handle)));
++      unit_name = scm_from_locale_string(idsa_unit_name_get(unit_handle));
++      unit_type = scm_from_locale_string(idsa_type_name(idsa_unit_type(unit_handle)));
+       unit_value = idsa2scm(unit_handle);
+ 
+-      list_new = gh_list(unit_name, unit_type, unit_value, SCM_UNDEFINED);
++      list_new = scm_list_n(unit_name, unit_type, unit_value, SCM_UNDEFINED);
+ 
+-      list_head = gh_cons(list_new, list_head);
++      list_head = scm_cons(list_new, list_head);
+     }
+   }
+ 
+   return list_head;
+ }
+ 
+-void local_main(int argc, char *argv[])
++void local_main(void *closure, int argc, char *argv[])
+ {
+   SCM user_function, argument_list;
+   IDSA_EVENT *event_handle;
+@@ -116,10 +116,10 @@
+   char write_buffer[IDSA_M_MESSAGE];
+   int should_write, have_written, write_result;
+ 
+-  gh_load(argv[1]);
++  scm_c_primitive_load(argv[1]);
+ 
+   /* WTF ? why does gh_lookup("idsa") fail and this work ? */
+-  user_function = gh_eval_str("idsa");
++  user_function = scm_c_eval_string("idsa");
+ 
+ #ifdef TRACE
+   fprintf(stderr, "local_main(): user_function is %d\n", user_function);
+@@ -193,7 +193,7 @@
+ 
+ 	idsa_reply_init(event_handle);
+ 
+-	if (gh_call1(user_function, argument_list) == SCM_BOOL_F) {
++	if (scm_call_1(user_function, argument_list) == SCM_BOOL_F) {
+ 	  idsa_reply_deny(event_handle);
+ #ifdef TRACE
+ 	  fprintf(stderr, "local_main(): false=deny\n");
+@@ -350,7 +350,7 @@
+ #endif
+ 
+   /* WARNING: Lets hope the guile garbage collector is really clever */
+-  gh_enter(2, local_argv, local_main);
++  scm_boot_guile(2, local_argv, local_main, NULL);
+ 
+   return 0;
+ }
